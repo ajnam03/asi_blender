@@ -15,10 +15,9 @@ class asi:
 
     def __init__(self, c_name, glia_appo, asi_appo = 0.045):
         self.c_name = c_name
-        self.sp_name = ahf.check_obj_name(c_name.split('c')[0] + 'sp' + c_name.split('c')[1].split('_')[0].rstrip('abcd')+'_remesh')
+        self.sp_name = ahf.check_obj_name(c_name.split('c', 1)[0] + 'sp' + c_name.split('c', 1)[1].rstrip('abcd'))
         self.ax_name = ahf.check_obj_name(c_name.split('c', 1)[0] + 'ax' + c_name.split('c', 1)[1])
         self.g_name = [g.name for g in bpy.data.collections['Collection'].objects if 'astro' in g.name]
-        self.scale_name = 'scale'
         self.ref_name = '1um_rad_ref' #1um rad reference circle imported from PyReconstruct
         self.asi_appo = asi_appo
         self.glia_appo = glia_appo
@@ -30,9 +29,9 @@ class asi:
 
     def calc_unit_conversion(self): 
         ref = bpy.data.objects[self.ref_name]
-        self.ref_rad = (ref.dimensions.x / 2) 
+        self.ref_rad = (ref.dimensions.x / 2) #get radius of ref circle
         ref_bm, ref_bm_faces, ref_bm_edges = ahf.create_bmesh(ref)
-        self.ref_area = (sum(f.calc_area() for f in ref_bm_faces) / 2) 
+        self.ref_area = (sum(f.calc_area() for f in ref_bm_faces) / 2)  #get area of ref circle
 
         self.conversion_length = 1/self.ref_rad
 
@@ -71,23 +70,7 @@ class asi:
         self.syn_dist = math.dist(sp_loc_global, ax_loc_global) #synapse distance
         self.syn_dist_convert = self.syn_dist * self.conversion_length
 
-    #segment spine and axon w/ cgal segments    
-    def segmentSA(self):
-        #check if segments exist
-        segment = True
-        try: 
-            sp_seg0 = bpy.data.objects[self.sp_name + '_seg0']
-        except KeyError:
-            #returns a KeyError if seg0 doesn't exists (i.e. cgal program was not able to generate any segments)
-            #only need to check _seg0 because ig segmentation was successful seg0 and seg1 were generated in all cases
-            segment = False 
 
-        if segment:
-            #extract spine head segment -> should be largest sgment + closest to c-object otherwise do not segment
-            self.sp_head_seg = ahf.extract_spineHead_seg(self.sp_name, self.c_name, self.c_center_global) #empty list if both conditions weren't met
-            if self.sp_head_seg: 
-                self.sp_name = ahf.segmentSpineHead(self.c_center_local, self.c_center_global, self.sp_name, self.sp_head_seg[0]) #segment + update self.sp_name to be used for asi analysis
- 
     #extract asi face indices using axon face normals 
     def extract_asi_idx(self):
         asi_idx = []
@@ -147,19 +130,6 @@ class asi:
         #record inner faces of this single boundaryloop 
         self.asi_idx = ahf.collapse_nested_bL(ax, boundaryLoop_all)
 
-    def calc_asi_area(self):
-        bpy.ops.object.mode_set(mode='EDIT')
-        ax = bpy.data.objects[self.ax_name]
-        ax_bm, ax_bm_faces, ax_bm_edges = ahf.create_bmesh(ax)
-        ax_bm.faces.ensure_lookup_table()
-
-        self.sp_area = sum([ax_bm_faces[i].calc_area() for i in range(len(ax_bm_faces))]) #to check units against PyReconstruct
-        self.asi_area = 0
-        for i in range(len(ax_bm_faces)):
-            if ax_bm_faces[i].select == True:
-                self.asi_area += ax_bm_faces[i].calc_area()
-        
-
     #convert asi face selection to boundary loop -> calc perimeter
     def asi_boundaryLoop(self):
         bpy.ops.object.mode_set(mode='EDIT')
@@ -211,7 +181,6 @@ class asi:
         bmesh.update_edit_mesh(ax.data)
         ax_bm.free()
 
-    #the blender e.calc_length() function always calculates in meters no matter what blender units are set to (at least for 3.6.5)
     def calc_peri_frac(self, asi:bool = False, asi_glia:bool=False):
         #ax bmesh
         ax = bpy.data.objects[self.ax_name]
@@ -230,7 +199,6 @@ class asi:
                     self.asiGlia_peri.append(0) 
                     self.asiGlia_frac.append(0)
        
-    
     def select_bL(self, asi:bool=False, asi_glia:bool=False, appo_dist=0.01):
         #ax bmesh
         ax = bpy.data.objects[self.ax_name]
@@ -288,53 +256,61 @@ class asi:
         ax_bm.free()
         self.asi_bL_idx = list(set(asi_bL_idx)).copy()
     
-    "PROBLEM WITH THIS FUNCTION!"
-    #this might not be meaningful because some synapses had more glia traced so min dist could look farther out
-    def extract_min_astro_appo(self, contour:bool=False, mesh:bool=False):
-
+    'THIS FUNCTION ASSUMES ONLY ONE GLIA NAME'
+    #current function on extracts asiGlia_bL for appo Dist = 120 nm
+    def extract_asiGlia2Glia_dist(self, contour:bool=False, mesh:bool=False):
         #define bmeshes
-        ax = bpy.data.objects[self.ax_name]
-        g = [bpy.data.objects[g] for g in self.g_name]
-        
-        # ax_bm = bmesh.from_edit_mesh(ax.data)
+        ax = bpy.data.objects[self.ax_name] 
         ax_bm, ax_bm_faces, ax_bm_edges = ahf.create_bmesh(ax)
         ax_bm.edges.ensure_lookup_table()
+        g = [bpy.data.objects[g] for g in self.g_name]
 
-        #find midpoint of an edge
-        asi_midpoints = [ahf.get_edge_midpoint(ax_bm.edges[edge], ax.matrix_world) for edge in self.asi_bL_idx]
+        #for all asiGlia vertices - get distance to closest point on astro mesh 
+        #last list of asiGlia_bL corresponds to vertices that had astro within 120 nm
+        asiGlia_midpoints = [ahf.get_edge_midpoint(ax_bm.edges[edge], ax.matrix_world) for edge in self.asiGlia_bL[-1]]
         
-        #min distance to astro for every asi peri vert
-        asi_astro_appo_dist = [ahf.extract_min_glia_appo(i, g, contour=contour, mesh=mesh) for i in asi_midpoints]
-        
-        try:
-            #min 
-            min_astro_appo_dist = min(asi_astro_appo_dist)* self.conversion_length
-        except ValueError:
-            print('no nearest astro...')
-            min_astro_appo_dist = np.nan
+        if(len(asiGlia_midpoints) >0):
+            print('length of asiGlia modpoints = ', len(asiGlia_midpoints))
+            #list of distances between asiGlia boundaryloop vertex and nearest point on glia
+            asiGlia2glia_dist = [math.dist(i[0], g[0].closest_point_on_mesh(i[0])[1]) for i in asiGlia_midpoints]
+            self.min_asiGlia2glia_dist = min(asiGlia2glia_dist) * self.conversion_length #min dist to glia 
+            self.avg_asiGlia2glia_dist = np.mean(asiGlia2glia_dist) * self.conversion_length #avg dist to glia
+        else:
+            print('no asiGlia coverage for this synapse')
+            self.min_asiGlia2glia_dist = np.nan
+            self.avg_asiGlia2glia_dist = np.nan
+    
+    def shrinkwrap_psd(self):
+         # Switch to object mode if necessary
+        if bpy.context.object.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
 
-        self.min_astro_appo = min_astro_appo_dist
-        ax_bm.free()
+        psd = bpy.data.objects[self.c_name]
 
-    def get_psd_obj(self):
-        psd = bpy.data.objects[self.c_name.split('_remesh')[0]]
-
-        psd_sp_name = self.c_name.split('_remesh')[0] + '_sp' 
-        psd_ax_name = self.c_name.split('_remesh')[0] + '_ax'
+        self.psd_sp_name = self.c_name + '_sp' 
+        self.psd_ax_name = self.c_name + '_ax'
         
         bpy.ops.object.select_all(action='DESELECT')
         psd.select_set(True)
         bpy.ops.object.duplicate()
 
-        psd_copy = bpy.data.objects[self.c_name.split('_remesh')[0] + '.001']
-        psd_copy.name = psd_ax_name
-        psd_copy.data.name = psd_ax_name
-        psd.name = psd_sp_name
-        psd.data.name = psd_sp_name
+        psd_sp = bpy.context.selected_objects[0]
+        psd_sp.name = self.psd_sp_name
+        psd_sp.data.name = self.psd_sp_name
+
+        bpy.ops.object.select_all(action='DESELECT')
+        psd.select_set(True)
+        bpy.ops.object.duplicate()
+
+        psd_ax = bpy.context.selected_objects[0]
+        psd_ax.name = self.psd_ax_name
+        psd_ax.data.name = self.psd_ax_name
+
+        bpy.context.view_layer.update()
         
         #get correct psd objects with updated names 
-        psd_sp = bpy.data.objects[psd_sp_name]
-        psd_ax = bpy.data.objects[psd_ax_name]
+        psd_sp = bpy.data.objects[self.psd_sp_name]
+        psd_ax = bpy.data.objects[self.psd_ax_name]
 
         bpy.context.view_layer.objects.active = psd_sp
         bpy.ops.object.modifier_add(type="SHRINKWRAP")
@@ -357,13 +333,13 @@ class asi:
 
    
     def extract_psd_area_centroid(self): #should be based on psd_sp_name
-        try:
-            print(self.psd_sp_name)
-        except AttributeError:
-            self.psd_sp_name = self.c_name.split('_remesh')[0] + '_sp'
-            self.psd_ax_name  = self.c_name.split('_remesh')[0] + '_ax'
+        # try:
+        #     print(self.psd_sp_name)
+        # except AttributeError:
+        #     self.psd_sp_name = self.c_name + '_sp'
+        #     self.psd_ax_name  = self.c_name + '_ax'
 
-        # Switch to Object Mode if necessary
+        # Switch to object mode if necessary
         if bpy.context.object.mode != 'OBJECT':
             bpy.ops.object.mode_set(mode='OBJECT')
         
@@ -399,7 +375,7 @@ class asi:
         psd_sp_bm.free()
         psd_ax_bm.free()
 
-            #extract area of asi faces + centroid 
+    #extract area of asi faces + centroid 
     def extact_asi_area_centroid(self):
         ax = bpy.data.objects[self.ax_name]
 
@@ -455,19 +431,24 @@ class asi:
         bpy.ops.mesh.region_to_loop()
 
     #calc offset of psd center from asi center
-    def extract_asi2psd_offset(self):
+    def extract_psd_centroid_offset(self):
         psd_offset = math.dist(self.psd_ax_centroid, self.asi_centroid)
         self.psd_offset = psd_offset * self.conversion_length
         
     'THIS FUNCTION ASSUMES ONLY ONE GLIA NAME'
-    #have to extract asiGlia_bL first for each appo Dist -> assume only one g_name!!! 
-    def extract_asi2psd2glia_dist(self, contour:bool=False, mesh:bool=False):
+    #current function on extracts asiGlia_bL for appo Dist = 120 nm
+    def extract_asiGlia2psd_dist(self, contour:bool=False, mesh:bool=False):
+
         #define bmeshes
-        ax = bpy.data.objects[self.ax_name] #SHOULD this be self.sp_name!!! --> SINCE THE PSD IS AGAINST THE POST SYN SIDE? OR Ax psd because it's asi
+        ax = bpy.data.objects[self.ax_name] 
         psd = bpy.data.objects[self.psd_ax_name]
         ax_bm, ax_bm_faces, ax_bm_edges = ahf.create_bmesh(ax)
         ax_bm.edges.ensure_lookup_table()
         g = [bpy.data.objects[g] for g in self.g_name]
+
+        # Switch to object mode if necessary
+        if bpy.context.object.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
 
         #find midpoint of an edge
         asi_midpoints = [ahf.get_edge_midpoint(ax_bm.edges[edge], ax.matrix_world) for edge in self.asi_bL_idx]
@@ -484,22 +465,11 @@ class asi:
         
         if(len(asiGlia_midpoints) >0):
             print('length of asiGlia modpoints = ', len(asiGlia_midpoints))
-            #list of distances between asiGlia boundaryloop vertex and nearest point on glia
-            asiGlia2glia_dist = [math.dist(i[0], g[0].closest_point_on_mesh(i[0])[1]) for i in asiGlia_midpoints]
-            self.min_asiGlia2glia_dist = min(asiGlia2glia_dist) * self.conversion_length #min dist to glia 
-            self.avg_asiGlia2glia_dist = np.mean(asiGlia2glia_dist) * self.conversion_length #avg dist to glia
-
             #list of distances between asiGlia boundaryloop vertex and nearest point on psd
             asiGlia2psd_dist = [math.dist(i[0], psd.closest_point_on_mesh(i[0])[1]) for i in asiGlia_midpoints] 
             self.min_asiGlia2psd_dist = min(asiGlia2psd_dist) * self.conversion_length #min dist to psd
             self.max_asiGlia2psd_dist = max(asiGlia2psd_dist) * self.conversion_length #max dist to psd
             self.avg_asiGlia2psd_dist = np.mean(asiGlia2psd_dist) * self.conversion_length #avg dist to psd
-
-            #get for each asiGlia vertex that had glia within 120 nm - get ratio of distance to glia vs. distance to psd 
-            asiGlia2glia_psd_distRatio = (np.array(asiGlia2glia_dist)/np.array(asiGlia2psd_dist)).tolist()
-            self.min_glia2psd_distRatio = min(asiGlia2glia_psd_distRatio)
-            self.max_glia2psd_distRatio = max(asiGlia2glia_psd_distRatio)
-            self.avg_glia2psd_distRatio = np.mean(asiGlia2glia_psd_distRatio)
 
             #get avg dist from each asiGlia vertex to psd centroid
             asiGlia2psdCentroid_dist = [math.dist(i[1], self.psd_ax_centroid) for i in asiGlia_midpoints]#get dist for each vertex
@@ -509,78 +479,14 @@ class asi:
             asiGlia2asiCentroid_dist = [math.dist(i[1], self.asi_centroid) for i in asiGlia_midpoints] #get dist for each vertex
             self.avg_asiGlia2asiCentroid_dist = np.mean(asiGlia2asiCentroid_dist) * self.conversion_length  #take overall mean for all asiGlia verts
 
-            #get avg dist ratio from each asiGlia vertex to psd centroid/ASI centroid
-            asiGlia2asi_psdCentroid_distRatio = (np.array(asiGlia2psdCentroid_dist)/np.array(asiGlia2asiCentroid_dist)).tolist() #dist ratio per vertex
-            self.avg_asiGlia2asi_psdCentroid_distRatio = np.mean(asiGlia2asi_psdCentroid_distRatio) #mean dist ratio for all asiGlia verts
-
         else:
             print('no asiGlia coverage for this synapse')
-            self.min_asiGlia2glia_dist = np.nan
-            self.avg_asiGlia2glia_dist = np.nan
             self.min_asiGlia2psd_dist = np.nan
             self.max_asiGlia2psd_dist = np.nan
             self.avg_asiGlia2psd_dist = np.nan
-            self.min_glia2psd_distRatio = np.nan
-            self.max_glia2psd_distRatio = np.nan
-            self.avg_glia2psd_distRatio = np.nan
             self.avg_asiGlia2psdCentroid_dist = np.nan
             self.avg_asiGlia2asiCentroid_dist = np.nan
-            self.avg_asiGlia2asi_psdCentroid_distRatio = np.nan
 
-    #'THIS FUNCTION ASSUMES ONLY ONE GLIA NAME'
-    #have to extract asiGlia_bL first for each appo Dist -> assume only one g_name!!! 
-    def extract_glia_vector(self, contour:bool=False, mesh:bool=False):
-        #define bmeshes
-        ax = bpy.data.objects[self.ax_name]
-        psd = bpy.data.objects[self.psd_ax_name]
-        ax_bm, ax_bm_faces, ax_bm_edges = ahf.create_bmesh(ax)
-        ax_bm.edges.ensure_lookup_table()
-        g = [bpy.data.objects[g] for g in self.g_name]
-
-        #for all asiGlia vertices - get distance to closest point on psd (for only asi peri vertices with glia within 120 nm)
-        #last list of asiGlia_bL corresponds to vertices that had astro within 120 nm
-        asiGlia_midpoints = [ahf.get_edge_midpoint(ax_bm.edges[edge], ax.matrix_world) for edge in self.asiGlia_bL[-1]]
-        
-        if(len(asiGlia_midpoints) >0):
-            print('length of asiGlia modpoints = ', len(asiGlia_midpoints))
-            #toward vector (if glia "attacts" psd toward) (target:ASI centroid - origin:glia vector)
-            toward_vector = Vector()
-            for i in asiGlia_midpoints: 
-                #calc vector 
-                vec = self.asi_centroid - i[1]
-                #convert to unit vector
-                unit_vec = vec/(math.dist(i[1], self.asi_centroid)) #divide by distance
-                #add to 'toward vector
-                toward_vector = toward_vector + unit_vec
-
-            #away vector (if glia "repels" psd away) (target: glia vector - origin: ASI centroid)
-            away_vector = Vector()
-            for i in asiGlia_midpoints: 
-                #calc vector 
-                vec = i[1] - self.asi_centroid
-                #convert to unit vector
-                unit_vec = vec/(math.dist(i[1], self.asi_centroid)) #divide by distance
-                #add to 'toward vector
-                away_vector = away_vector + unit_vec
-            
-            #record vectors
-            self.toward_vec_x = toward_vector.x
-            self.toward_vec_y = toward_vector.y
-            self.toward_vec_z = toward_vector.z
-            self.away_vec_x = away_vector.x
-            self.away_vec_y = away_vector.y
-            self.away_vec_z = away_vector.z
-
-        else:
-            print('no asiGlia coverage for this synapse')
-            self.toward_vec_x = np.nan
-            self.toward_vec_y = np.nan
-            self.toward_vec_z = np.nan
-            self.away_vec_x = np.nan
-            self.away_vec_y = np.nan
-            self.away_vec_z = np.nan
-    
-        ax_bm.free()
     #number of asiGlia segments!
     def extract_asiGlia_segments(self):
         #define bmeshes
@@ -617,24 +523,23 @@ class asi:
         ax_bm.free()
 
     #extract vol and surface area of spines import from pyrecon
-    def extract_pyrecon_spine_stats(self):
-        pyrecon_sp_name = self.sp_name.split('_remesh')[0]
-        pyrecon_sp = bpy.data.objects[pyrecon_sp_name]
+    def extract_spine_stats(self):
+        sp = bpy.data.objects[self.sp_name]
 
         #convert to bm
-        pyrecon_sp_bm, pyrecon_sp_bm_faces, pyrecon_sp_bm_edges = ahf.create_bmesh(pyrecon_sp)
+        sp_bm, sp_bm_faces, sp_bm_edges = ahf.create_bmesh(sp)
 
         #ensure bmesh data is up-to-date
-        pyrecon_sp_bm.normal_update()
+        sp_bm.normal_update()
 
         #calculate surface area
-        sa = sum(f.calc_area() for f in pyrecon_sp_bm.faces)
-        volume = pyrecon_sp_bm.calc_volume()
+        sp_area = sum(f.calc_area() for f in sp_bm.faces)
+        sp_vol = sp_bm.calc_volume()
 
-        self.pyrecon_sp_area = sa * (self.conversion_length **2)
-        self.pyrecon_sp_vol = volume * (self.conversion_length **3)
+        self.sp_area = sp_area * (self.conversion_length **2)
+        self.sp_vol = sp_vol * (self.conversion_length **3)
 
-        pyrecon_sp_bm.free()
+        sp_bm.free()
 
 
 

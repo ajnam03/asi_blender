@@ -6,6 +6,7 @@ import csv
 import numpy as np
 import imp
 
+'''This functions helps with importing and exporting objects into your blend project'''
 
 def export_objects(temp_dir, filter=[''], ex_filter =['foo'], not_analyzed = []):
     '''EXPORT'''
@@ -13,7 +14,6 @@ def export_objects(temp_dir, filter=[''], ex_filter =['foo'], not_analyzed = [])
     collection_name = 'Collection' #define name of collection
     obj_name_list = [obj.name for obj in bpy.data.collections[collection_name].all_objects if any(o in obj.name for o in filter) and all(ef not in obj.name for ef in ex_filter)]
     # temp_dir = tempfile.TemporaryDirectory(dir='/tmp')
-    # temp_dir = '/Volumes/LaCie/Harris_lab/brain_init23/tmp/'
     print('temp dir = ', temp_dir)
     for o in obj_name_list:
         if o not in not_analyzed: 

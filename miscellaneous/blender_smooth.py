@@ -6,6 +6,9 @@ import csv
 import numpy as np
 import imp
 
+'''This functions is a smoothing routine to smooth your object meshes using Gamer: 
+https://gamer.readthedocs.io/en/latest/tutorials/tutorials/blendertutorial.html'''
+
 #not_analyzed - list of not analyzed objects (e.g. due to errors in mesh)
 #filter -filters object in object list to include
 #ex_filter -"exclusion filter" filters objects in object list NOT to include
@@ -28,7 +31,6 @@ def smooth(filter=[''], ex_filter=['foo']):
         bpy.ops.object.select_all(action='DESELECT') #deselect all objs
         obj.select_set(True)#select only object 'obj'
         
-
         print('smoothing meshes')
 
         #gamer version available

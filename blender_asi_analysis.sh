@@ -1,12 +1,17 @@
+#!/usr/bin/env bash
 
-blender_path="Blender.app/Contents/MacOS" #replace with path to blender
-scripts_path_asi="asi_blender/blender_asi_method.py" #replace with path to blender_asi_method.py script
+blender_path="/Applications/Blender.app/Contents/MacOS/Blender"  # replace with the full path to Blender binary
+script_path_asi="blender_asi_method.py"  # replace with the correct path to your script
 
+# Declare an array of .blend file paths
 declare -a blend_paths=(
-# PATH TO BLENDER FILES
+    # "/path/to/file1.blend"
+    # "/path/to/file2.blend"
+    /Volumes/Seagate_Por/dentate_blender/jneuro_script_testing/DRZNC/DRZNC_d13.blend
 )
 
-echo 'blender analysis'
+echo 'Starting Blender analysis...'
+
 for index in "${!blend_paths[@]}"; do 
-./Blender --background --python $script_path_asi -- ${blend_paths[$index]}
+    "$blender_path" --background --python "$script_path_asi" -- "${blend_paths[$index]}"
 done

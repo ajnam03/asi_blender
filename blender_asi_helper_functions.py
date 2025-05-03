@@ -7,7 +7,6 @@ import re
 
 def extract_face_density(obj):
     bpy.ops.object.mode_set(mode='EDIT')
-
     #create bmesh
     bm = bmesh.new()
     bm.from_mesh(obj.data)
@@ -43,8 +42,8 @@ def min_face_density(col_name, filter, exclude_filter, min_density):
         #print('final face density = ', density)
 
 def check_obj_name(name): 
-    if (not bpy.data.objects.get(name)) & name.split('_')[0][-1].isalpha():
-        name = name.split('_')[0][:-1] + name.split('_')[1]
+    if (not bpy.data.objects.get(name)) & name[-1].isalpha():
+        name = name.rstrip('abcd')
     return name
         
 #bounding box method
@@ -55,60 +54,6 @@ def extract_obj_center_bbox(obj_name):
     #convert to world coords
     global_bbox_center = obj.matrix_world @ local_bbox_center
     return local_bbox_center, global_bbox_center
-
-
-def segmentSpineHead(c_center_loc, c_center_global, sp_name, sp_head_seg): #planes to be used to segment obj (based on bounding box)
-    #get original object and cgal segment object
-    bpy.ops.object.mode_set(mode ='OBJECT')
-    sp = bpy.data.objects[sp_name]
-    sp_head_seg = bpy.data.objects[sp_head_seg]
-    bpy.context.view_layer.objects.active = sp #make active obj
-    
-    #build bounding box mesh for cgal segment
-    #get faces + verts of cube bounding box
-    verts = [Vector(v) for v in sp_head_seg.bound_box] #bb verts
-    faces = [(0, 1, 2, 3), (4, 7, 6, 5), (0, 4, 5, 1), (1, 5, 6, 2), (2, 6, 7, 3), (4, 0, 3, 7)]
-    
-    #create bb mesh
-    bb_name = 'bb'
-    bb_mesh = bpy.data.meshes.new(bb_name) 
-    bb_mesh.from_pydata(verts, [], faces) 
-    bb = bpy.data.objects.new(bb_name, bb_mesh)
-        
-    #create bmesh of bb
-    bpy.ops.object.mode_set(mode ='EDIT') #change to edit mode
-    bb_bm = bmesh.new()
-    bb_bm.from_mesh(bb_mesh)
-    bb_bm_faces = [f for f in bb_bm.faces]
-    
-    #check num of cgal segments. If 3: make two cuts. If 2: make one.
-    #find farthest(s) bb face to c object center
-    f_center_list = [bb.matrix_world @ f.calc_center_median() for f in bb_bm_faces]
-    dist2c = [math.dist(c_center_global, bb.matrix_world @ f.calc_center_median()) for f in bb_bm_faces] #calc distance to c-object for each bb face
-
-    filter = [i == max(dist2c) for i in dist2c] #boolean filter to find max distance
-    far_faces = list(compress(bb_bm_faces, filter)) #farthest face
-    far_face_dist = list(compress(dist2c, filter)) #farthest face dist
-                
-    #create bmesh of original object to segment
-    bpy.ops.object.mode_set(mode ='EDIT') #change to edit mode
-    sp_bm = bmesh.new()
-    sp_bm.from_mesh(sp.data)
-    
-    #segment original object
-    for f in far_faces:
-        bmesh.ops.bisect_plane(sp_bm, geom=sp_bm.verts[:]+sp_bm.edges[:]+sp_bm.faces[:], plane_co=bb.matrix_world @ f.calc_center_median(),plane_no =f.normal,clear_outer=True)
-    
-    #create new object based on object segment -> add to scene/collection
-    sp_newSeg_name = sp_name + '_segASI'
-    sp_newSeg_me = bpy.data.meshes.new(sp_newSeg_name)
-    sp_bm.to_mesh(sp_newSeg_me)
-    sp_newSeg = bpy.data.objects.new(sp_newSeg_name, sp_newSeg_me)
-    bpy.data.collections["Collection"].objects.link(sp_newSeg)
-
-    bb_bm.free() 
-    sp_bm.free()
-    return sp_newSeg_name
 
 def create_bmesh(obj):
     bpy.context.view_layer.objects.active = obj #make active obj
@@ -151,30 +96,6 @@ def check_obj_intersect(faulty_seg, valid_seg): #check two objects intersects (i
         print('merged w/ valid seg = ', valid_seg)    
         intersect = True
     return intersect
-
-def extract_spineHead_seg(sp_name, c_name, c_center_global):
-    #get biggest segment 
-    bm_vol = []
-    seg_dist = []
-    seg_list = [sp_name + '_seg0', sp_name + '_seg1']
-    #for each segment find bmesh volume + num of faces 
-    for s in seg_list:
-        obj = bpy.data.objects[s]
-        bm, bm_faces, bm_edges = create_bmesh(obj)
-
-        #get segment volume
-        bm_vol.append(bm.calc_volume())
-
-        #get segment distance from synapse
-        s_center_loc, s_center_global = extract_obj_center_bbox(s)
-        dist = math.dist(c_center_global, s_center_global) #calc distance between segment + c-object centers
-        seg_dist.append(dist)
-        bm.free()
-        
-    #extract segment that is both largest + closest to c-object center
-    filter = [(bm_vol[i] == max(bm_vol)) and (seg_dist[i] == min(seg_dist)) for i in range(len(seg_list))]
-    spine_seg = list(compress(seg_list, filter))
-    return spine_seg 
 
 
 #fixes if there are sharp edge selections that would create overlapping boundaryLoops
@@ -252,6 +173,7 @@ def getBoundaryLoop(obj):
             merging = True
     bm.free()
     return pooled
+
 def collapse_nested_bL_helper(obj, bl): #returns inner faces associated with that bL
     bpy.ops.mesh.select_all(action='DESELECT')
     bm, bm_faces, bm_edges = create_bmesh(obj)
@@ -361,11 +283,6 @@ def extract_glia_appo(edge_midpoint, ax_matrix_world, g, glia_appo, conversion, 
             if math.dist(glia_loc_world, edge_midpoint[1]) < glia_appo: #math.dist doesn't need to be converted
                 astro_appo = True
                 return astro_appo
-        # if not astro_appo:
-        #     for v in g_contour.data.vertices:
-        #         if math.dist(edge_midpoint[1], g_contour.matrix_world @ v.co) < glia_appo:
-        #             astro_appo = True
-        #             return astro_appo
         return astro_appo
 
 #extract min appo dist
@@ -403,7 +320,6 @@ def fix_obj_name(col_name, filter_str, remove_str):
         obj.name = new_name
         obj.data.name = new_name
 
-
 #general function to delete faulty meshes give obj name
 def del_faulty_meshes_general(obj_name):
     print('obj_name = ', obj_name)
@@ -414,29 +330,6 @@ def del_faulty_meshes_general(obj_name):
     #delete faulty mesh
     bpy.ops.object.delete()   
 
-
-#delete seg of faulty nonSmoothed that were done
-def delete_nonSmooth_segs(col_name):
-    obj_name_list = [obj.name for obj in bpy.data.collections[col_name].all_objects if 'nonSmooth' in obj.name]
-    for o in obj_name_list:
-        print('o = ', o)
-        
-        del_name0 = o.split('nonSmooth')[0] + '_seg0'
-        del_name1 = o.split('nonSmooth')[0] + '_seg1'
-        
-        try:
-            obj1 = bpy.data.objects[del_name0]
-            obj2 = bpy.data.objects[del_name1]
-            
-            del_faulty_meshes_general(del_name0) #delete seg0
-            del_faulty_meshes_general(del_name0) #delete seg1
-            del_faulty_meshes_general(o) #delete snonSmooth obj
-                        
-        except KeyError:
-            print('no segmentation was done but still delete nonSmooth obj')
-            del_faulty_meshes_general(o) #delete snonSmooth obj
-    
-    
 #function to delete faulty meshes with certain filterable name
 def del_faulty_meshes_filter(col_name, delete_filter):
     # bpy.ops.object.mode_set(mode='OBJECT')
