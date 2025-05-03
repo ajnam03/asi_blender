@@ -7,7 +7,6 @@ script_path_asi="blender_asi_method.py"  # replace with the correct path to your
 declare -a blend_paths=(
     # "/path/to/file1.blend"
     # "/path/to/file2.blend"
-    /Volumes/Seagate_Por/dentate_blender/jneuro_script_testing/DRZNC/DRZNC_d13.blend
 )
 
 echo 'Starting Blender analysis...'

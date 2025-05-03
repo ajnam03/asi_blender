@@ -1,16 +1,19 @@
-# ASI_blender
+### Scripts for Automated 3D Analysis of Astroglial Apposition at the Axon-Spine Interface  
 
-Scripts for automated three-dimensional analysis of astroglial apposition at the axon-spine face interface (Currently being edited)
+#### 🔧 Notes
+1. **Blender version**: This script currently works with **Blender 3.6.5**.  
+2. **LoopTools Add-on**: Ensure the LoopTools add-on is activated in Blender.  
+   ➤ [LoopTools Documentation](https://docs.blender.org/manual/en/3.5/addons/mesh/looptools.html)  
+3. **Naming conventions**:
+   - `d##c##`: **c-object**
+   - `d##sp##`: **spine object**
+   - `d##ax##`: **axon object**
+   - `astroAll`: **astroglia object**
+   - `1um_rad_ref`: **1 µm reference circle**
 
-Make sure to activate loop tools
-
-describe the naming scheme of each of your objects
-in this case:
-astroAll
-d03c04
-d03sp04
-d03ax04
-1um_rad_ref
-
-single spines were analyzed even if there were multiple synapses
-multisynaptic spines ... but this isn't relevant because ignored multisynaptic synapses ..?
+#### ▶️ How to Run
+1. Edit the path to your `.blend` file in `blender_asi_analysis.sh`.
+2. Set the path to the Blender executable.
+3. Make the script executable:
+   ```bash
+   chmod u+x blender_asi_analysis.sh
