@@ -31,8 +31,11 @@ if __name__== '__main__':
                    'ref_rad', 'ref_area',  #reference circle dimensions to calculate conversion factor
                    'syn_center', 'syn_dist',  #synapse
                    'sp_area', 'sp_vol', #spine area and vol
-                   'asi_faces', 'asi_edges', 'asi_peri', 'asi_area', 'asi_centroid', #asi 
-                   'psd_sp_centroid', 'psd_ax_centroid', 'psd_offset,' #psd offset
+                   'asi_faces', 'asi_edges', 'asi_peri', 'asi_area', #asi size
+                   'asi_centroid_x', 'asi_centroid_y', 'asi_centroid_z', #asi centroid xyz
+                   'psd_sp_centroid_x', 'psd_sp_centroid_y', 'psd_sp_centroid_z', #psd centroid xyz (shrinkwrapped to spine)
+                   'psd_ax_centroid_x', 'psd_ax_centroid_y', 'psd_ax_centroid_z', #psd centroid xyz (shrinkwrapped to axon)
+                   'psd_offset,' #psd offset
                    'min_asi2psd_dist', 'max_asi2psd_dist', 'avg_asi2psd_dist', #dist from ASI to psd 
                    'min_asiGlia2psd_dist', 'max_asiGlia2psd_dist', 'avg_asiGlia2psd_dist', #dist frpm astro-apposed ASI to psd 
                    'min_asiGlia2glia_dist', 'avg_asiGlia2glia_dist'] #dist from astro-apposed ASI to nearest astro
@@ -138,9 +141,15 @@ if __name__== '__main__':
         results.append(asi.asi_bL_idx) #append asi boundary loop edge ids
         results.append(asi.asi_peri) #append asi perimeter
         results.append(asi.asi_area) #append asi area
-        results.append(asi.asi_centroid) #geometric centroid of asi
-        results.append(asi.psd_sp_centroid) #geometric centroid of psd shrinkwrapped to spine
-        results.append(asi.psd_ax_centroid) #geometric centroid of psd shrinkwrapped to axon
+        results.append(asi.asi_centroid_x) #geometric centroid (xyz) of asi 
+        results.append(asi.asi_centroid_y)
+        results.append(asi.asi_centroid_z)
+        results.append(asi.psd_sp_centroid_x) #geometric centroid (xyz) of psd shrinkwrapped to spine
+        results.append(asi.psd_sp_centroid_y)
+        results.append(asi.psd_sp_centroid_z)
+        results.append(asi.psd_ax_centroid_x) #geometric centroid (xyz) of psd shrinkwrapped to axon
+        results.append(asi.psd_ax_centroid_y)
+        results.append(asi.psd_ax_centroid_z)
         results.append(asi.psd_offset) #offset of psd centroid from asi centroid
         results.append(asi.min_asi2psd_dist) #min/max/avg distances between all asi peri verts + closest psd vert 
         results.append(asi.max_asi2psd_dist)
