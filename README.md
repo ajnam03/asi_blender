@@ -52,10 +52,10 @@ The script will loop through each .blend file and blender_asi_method.py inside B
 ## Cite this Work 
 
 If you use this code or data, please cite our preprint:
-Nam, A. J., Kuwajima, M., Parker, P. H., Bowden, J. B., Abraham, W. C., & Harris, K. M. (2025). Perisynaptic astroglial response to in vivo long-term potentiation and concurrent long-term depression in the hippocampal dentate gyrus. bioRxiv. https://doi.org/10.1101/2025.05.13.653827
+Nam, A. J., Kuwajima, M., Parker, P. H., Bowden, J. B., Abraham, W. C., & Harris, K. M. (2025). Perisynaptic astroglial response to in vivo long-term potentiation and concurrent long-term depression in the hippocampal dentate gyrus. bioRxiv. [doi:10.1101/2025.05.13.653827](https://doi.org/10.1101/2025.05.13.653827)
 
 ```bibtex
-@article{nam2025perisynaptic,
+@article{nam2025astroglia,
   author    = {Andrea J. Nam and Masaaki Kuwajima and Patrick H. Parker and Jared B. Bowden and Wickliffe C. Abraham and Kristen M. Harris},
   title     = {Perisynaptic astroglial response to in vivo long-term potentiation and concurrent long-term depression in the hippocampal dentate gyrus},
   journal   = {bioRxiv},
