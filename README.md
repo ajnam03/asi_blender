@@ -32,14 +32,14 @@ Read more in our [preprint](https://doi.org/10.1101/2025.05.13.653827).
 
 1. Open the blender_asi_analysis.sh script and edit the following variables:
    ```bash
-   blender_path="/Applications/Blender.app/Contents/MacOS/Blender"  # Replace with your Blender binary path
-   script_path_asi="blender_asi_method.py"  # Replace with the path to your ASI analysis script
+   blender_path="/Applications/Blender.app/Contents/MacOS/Blender"  # Replace with your Blender path
+   script_path_asi="blender_asi_method.py"  # Replace with the path to the blender_asi_method.py script
 2. Add the full paths to your .blend files in the array:
    ```bash
    declare -a blend_paths=(
     "/Users/yourname/project1/axonspine1.blend"
     "/Users/yourname/project2/axonspine2.blend"
-)
+   )
 3. Make the shell script executable:
    ```bash
    chmod u+x blender_asi_analysis.sh
@@ -47,7 +47,7 @@ Read more in our [preprint](https://doi.org/10.1101/2025.05.13.653827).
    ```bash
    ./blender_asi_analysis.sh
 
-The script will loop through each .blend file and run your ASI analysis script inside Blender in headless mode.
+The script will loop through each .blend file and blender_asi_method.py inside Blender in headless mode.
 
 ## Cite this Work 
 
