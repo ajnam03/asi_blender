@@ -2,9 +2,9 @@
 
 ## Table of Contents
 - [Introduction](#introduction)
-- [Set-up](#set-up)
-- [How to Run](#how-to-run)
-- [Cite](#cite)
+- [Set-up 🛠️](#set-up-)
+- [How to Run ▶️](#how-to-run-)
+- [Cite this Work 📖](#cite-this-work-)
 
 ## 📘 Introduction
 
@@ -12,7 +12,7 @@ This repository contains code to automatically identify the axon–spine interfa
 
 Read more in our [preprint](https://doi.org/10.1101/2025.05.13.653827).
 
-## 🛠️ Set-up
+## Set-up 🛠️
 
 1. **Blender version**: This script currently supports **Blender 3.6.5**.
 
@@ -28,7 +28,7 @@ Read more in our [preprint](https://doi.org/10.1101/2025.05.13.653827).
    - `astroAll` → **astroglia object**
    - `1um_rad_ref` → **1 µm reference circle**
 
-## ▶️ How to Run
+## How to Run ▶️
 
 1. Edit the path to your `.blend` file in the script:
    ```bash
@@ -43,7 +43,8 @@ Read more in our [preprint](https://doi.org/10.1101/2025.05.13.653827).
    ```bash
    ./blender_asi_analysis.sh
 
-## 📖 Cite this Work
+## Cite this Work 📖
+
 If you use this code or data, please cite our preprint:
 Nam, A. J., Kuwajima, M., Parker, P. H., Bowden, J. B., Abraham, W. C., & Harris, K. M. (2025). Perisynaptic astroglial response to in vivo long-term potentiation and concurrent long-term depression in the hippocampal dentate gyrus. bioRxiv. https://doi.org/10.1101/2025.05.13.653827
 
